@@ -184,87 +184,45 @@ func TestNegativeLookahead(t *testing.T) {
 	})
 }
 
-// func TestRuleDefinition(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
-// 	//       rule test
-// 	//         'a'
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "a")
-// 	//     assert !grammar.parse_rule(:test, "X")
-// }
+func TestRuleDefinition(t *testing.T) {
+	testGrammar(t, `
+		rule SomeName
+			'a'
+		end
+	`, "SomeName", map[string]bool{
+		"a": true,
+		"X": false,
+	})
+}
 
-// func TestRuleReference(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
-// 	//       rule test
-// 	//         a
-// 	//       end
-// 	//       rule a
-// 	//         'b'
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "b")
-// 	//     assert !grammar.parse_rule(:test, "X")
-// 	//     assert !grammar.parse_rule(:test, "a")
-// }
+func TestRuleReference(t *testing.T) {
+	testGrammar(t, `
+    rule Test
+      a
+    end
+    rule a
+      'b'
+    end
+	`, "Test", map[string]bool{
+		"b": true,
+		"X": false,
+		"a": false,
+	})
+}
 
-// func TestRecursiveRule(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
-// 	//       rule test
-// 	//         '(' test ')' / ( )
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "")
-// 	//     assert grammar.parse_rule(:test, "()")
-// 	//     assert grammar.parse_rule(:test, "((()))")
-// 	//     assert !grammar.parse_rule(:test, "()))")
-// 	//     assert !grammar.parse_rule(:test, "((()")
-// }
-
-// func TestBooleanFunctions(t *testing.T) {
-// 	testRule(t, `'a' v:$true 'bc' / 'd' v:$false 'ef'`, map[string]bool {
-// 	"abc") == { v: true : true,
-// 	"def") == { v: false : true,
-//   })
-
-// 	testRule(t, `'a' ( 'b' v:$true )? 'c'`, map[string]bool {
-// 	"abc") == { v: true : true,
-// 	"ac") == {: true,
-//   })
-// }
-
-// func TestErrorFunction(t *testing.T) {
-// 	testRule(t, `'a' $error['test'] 'bc'`, map[string]bool {
-// 	"abc": false,
-// 	//     assert rule.parser.failure_reason.is_a? JetPEG::ParsingError
-// 	//     assert rule.parser.failure_reason.position == 1
-// 	//     assert rule.parser.failure_reason.other_reasons == ["test"]
-// }
-
-// func TestMatchFunction(t *testing.T) {
-// 	testRule(t, `%a:( . . ) $match[%a]`, map[string]bool {
-// 	"abab": true,
-// 	"cdcd": true,
-// 	"a": false,
-// 	"ab": false,
-// 	"aba": false,
-// 	"abaX": false,
-// }
-
-// func TestModes(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
-// 	//       rule test
-// 	//         test2 $enter_mode['somemode', test2 $enter_mode['othermode', $leave_mode['somemode', test2]]]
-// 	//       end
-// 	//       rule test2
-// 	//         !$in_mode['somemode'] 'a' / $in_mode['somemode'] 'b'
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "aba")
-// 	//     assert !grammar.parse_rule(:test, "aaa")
-// 	//     assert !grammar.parse_rule(:test, "bba")
-// 	//     assert !grammar.parse_rule(:test, "abb")
-// }
+func TestRecursiveRule(t *testing.T) {
+	testGrammar(t, `
+    rule Test
+      '(' Test ')' / ( )
+    end
+	`, "Test", map[string]bool{
+		"":       true,
+		"()":     true,
+		"((()))": true,
+		"()))":   false,
+		"((()":   false,
+	})
+}
 
 // func TestLabel(t *testing.T) {
 // 	testRule(t, `'a' char:. 'c' / 'def'`, map[string]bool {
@@ -295,7 +253,7 @@ func TestNegativeLookahead(t *testing.T) {
 // 	testRule(t, `'a' @:. 'c'`, map[string]bool {
 // 	"abc") == "b: true,
 
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         char:a
 // 	//       end
@@ -314,7 +272,7 @@ func TestNegativeLookahead(t *testing.T) {
 // }
 
 // func TestRuleWithLabel(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         a word:( 'b' a ) :a
 // 	//       end
@@ -326,21 +284,21 @@ func TestNegativeLookahead(t *testing.T) {
 // }
 
 // func TestRecursiveRuleWithLabel(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         '(' inner:( test ( other:'b' )? ) ')' / char:'a'
 // 	//       end
 // 	//     "
 // 	//     assert grammar.parse_rule(:test, "((a)b)") == { inner: { inner: { char: "a" }, other: "b"} }
 
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         '(' test ')' / char:'a'
 // 	//       end
 // 	//     "
 // 	//     assert grammar.parse_rule(:test, "((a))") == { char: "a" }
 
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         '(' test2 ')' / char:'a'
 // 	//       end
@@ -364,7 +322,7 @@ func TestNegativeLookahead(t *testing.T) {
 // 	testRule(t, `list:( 'a' char:. )*->( 'ada' final:. )`, map[string]bool {
 // 	"abacadae") == { list: [{ char: "b" }, { char: "c" }, { final: "e" }] : true,
 
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         ( char1:'a' inner:test / 'b' )*
 // 	//       end
@@ -402,7 +360,7 @@ func TestNegativeLookahead(t *testing.T) {
 // }
 
 // func TestParameters(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule test
 // 	//         %a:. %b:. test2[%a, %b, $true]
 // 	//       end
@@ -421,7 +379,7 @@ func TestNegativeLookahead(t *testing.T) {
 // }
 
 // func TestLeftRecursionHandling(t *testing.T) {
-// 	//     grammar = JetPEG::Compiler.compile_grammar "
+// 	testGrammar(t, `
 // 	//       rule expr
 // 	//         add:( l:expr '+' r:num ) /
 // 	//         sub:( l:expr '-' r:num ) /
@@ -436,9 +394,58 @@ func TestNegativeLookahead(t *testing.T) {
 // 	//     assert grammar.parse_rule(:expr, "1-2-3") == { sub: { l: { sub: { l: "1", r: "2" } }, r: "3" } }
 // }
 
+// func TestBooleanFunctions(t *testing.T) {
+// 	testRule(t, `'a' v:$true 'bc' / 'd' v:$false 'ef'`, map[string]bool {
+// 	"abc") == { v: true : true,
+// 	"def") == { v: false : true,
+//   })
+
+// 	testRule(t, `'a' ( 'b' v:$true )? 'c'`, map[string]bool {
+// 	"abc") == { v: true : true,
+// 	"ac") == {: true,
+//   })
+// }
+
+// func TestErrorFunction(t *testing.T) {
+// 	testRule(t, `'a' $error['test'] 'bc'`, map[string]bool {
+// 	"abc": false,
+// 	//     assert rule.parser.failure_reason.is_a? JetPEG::ParsingError
+// 	//     assert rule.parser.failure_reason.position == 1
+// 	//     assert rule.parser.failure_reason.other_reasons == ["test"]
+// }
+
+// func TestMatchFunction(t *testing.T) {
+// 	testRule(t, `%a:( . . ) $match[%a]`, map[string]bool {
+// 	"abab": true,
+// 	"cdcd": true,
+// 	"a": false,
+// 	"ab": false,
+// 	"aba": false,
+// 	"abaX": false,
+// }
+
+// func TestModes(t *testing.T) {
+// 	testGrammar(t, `
+// 	//       rule test
+// 	//         test2 $enter_mode['somemode', test2 $enter_mode['othermode', $leave_mode['somemode', test2]]]
+// 	//       end
+// 	//       rule test2
+// 	//         !$in_mode['somemode'] 'a' / $in_mode['somemode'] 'b'
+// 	//       end
+// 	//     "
+// 	//     assert grammar.parse_rule(:test, "aba")
+// 	//     assert !grammar.parse_rule(:test, "aaa")
+// 	//     assert !grammar.parse_rule(:test, "bba")
+// 	//     assert !grammar.parse_rule(:test, "abb")
+// }
+
 func testRule(t *testing.T, rule string, inputs map[string]bool) {
+	testGrammar(t, "rule Test\n"+rule+"\nend\n", "Test", inputs)
+}
+
+func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]bool) {
 	fset := token.NewFileSet()
-	file := CompileRule(rule, fset)
+	file := Compile(grammar, mainRule, fset)
 
 	if false {
 		printer.Fprint(os.Stdout, fset, file)
@@ -470,11 +477,11 @@ func testRule(t *testing.T, rule string, inputs map[string]bool) {
 		switch exitCode {
 		case 100:
 			if !matchExpected {
-				t.Errorf("rule %q did match %q", rule, input)
+				t.Errorf("grammar %q did match %q", grammar, input)
 			}
 		case 101:
 			if matchExpected {
-				t.Errorf("rule %q did not match %q", rule, input)
+				t.Errorf("grammar %q did not match %q", grammar, input)
 			}
 		default:
 			t.Errorf("unexpected exit code: %d", exitCode)

@@ -3,6 +3,7 @@ package peg
 import (
 	"github.com/neelance/jetpeg"
 	"go/ast"
+	"go/token"
 )
 
 type Sequence struct {
@@ -146,6 +147,19 @@ func (e *NegativeLookahead) Compile(onFailure func() []ast.Stmt) (stmts []ast.St
 type RuleCall struct {
 	Name      jetpeg.Stringer
 	Arguments []interface{}
+}
+
+func (e *RuleCall) Compile(onFailure func() []ast.Stmt) []ast.Stmt {
+	return []ast.Stmt{
+		simpleAssign(input, &ast.CallExpr{
+			Fun:  ast.NewIdent(e.Name.String()),
+			Args: []ast.Expr{input},
+		}),
+		&ast.IfStmt{
+			Cond: &ast.BinaryExpr{X: input, Op: token.EQL, Y: ast.NewIdent("nil")},
+			Body: &ast.BlockStmt{List: onFailure()},
+		},
+	}
 }
 
 type ParenthesizedExpression struct {

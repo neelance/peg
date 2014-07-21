@@ -1,6 +1,6 @@
 rule Grammar
   ws? Rules:(
-    'rule' ws :ruleName Parameters:( '[' localValue*[ ',' ws ] ']' )? ws Child:ParsingRule 'end' ws
+    'rule' ws Name:ruleName Parameters:( '[' localValue*[ ',' ws ] ']' )? ws Child:ParsingRule 'end' ws
   )*
 end
 
@@ -56,7 +56,7 @@ end
 
 rule repetition
   / Child:primary '?' ws <Choice { Children: [ @Child, <EmptyParsingExpression { }> ] }>
-  / Child:primary '*->' UntilExpression:primary <Until>
+  / Child:primary '*->' UntilExpression:primary ws <Until>
   / Child:primary ( '*' AtLeastOnce:$false / '+' AtLeastOnce:$true ) ( '[' ws GlueExpression:expression ']' )? ws <Repetition>
   / primary ws
 end

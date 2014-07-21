@@ -77,8 +77,8 @@ func init() {
 
 var byteSlice = &ast.ArrayType{Elt: ast.NewIdent("byte")}
 
-func CompileRule(expression string, fset *token.FileSet) *ast.File {
-	rule, err := metagrammarParser.Parse("ParsingRule", []byte(expression))
+func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
+	g, err := metagrammarParser.Parse("Grammar", []byte(grammar))
 	if err != nil {
 		panic(err)
 	}
@@ -105,7 +105,7 @@ func CompileRule(expression string, fset *token.FileSet) *ast.File {
     }
 
     func main() {
-      inputAtEnd := rule(append([]byte(os.Args[1]), 0))
+      inputAtEnd := `+mainRule+`(append([]byte(os.Args[1]), 0))
       if len(inputAtEnd) != 1 || inputAtEnd[0] != 0 {
         os.Exit(101)
       }
@@ -116,23 +116,27 @@ func CompileRule(expression string, fset *token.FileSet) *ast.File {
 		panic(err)
 	}
 
-	onFailure := func() []ast.Stmt {
-		return []ast.Stmt{
-			&ast.ReturnStmt{Results: []ast.Expr{ast.NewIdent("nil")}},
+	for _, rule := range g.(map[string]interface{})["Rules"].([]interface{}) {
+		r := rule.(map[string]interface{})
+
+		onFailure := func() []ast.Stmt {
+			return []ast.Stmt{
+				&ast.ReturnStmt{Results: []ast.Expr{ast.NewIdent("nil")}},
+			}
 		}
+		file.Decls = append(file.Decls, &ast.FuncDecl{
+			Name: ast.NewIdent(r["Name"].(jetpeg.Stringer).String()),
+			Type: &ast.FuncType{
+				Params:  &ast.FieldList{List: []*ast.Field{&ast.Field{Names: []*ast.Ident{input}, Type: byteSlice}}},
+				Results: &ast.FieldList{List: []*ast.Field{&ast.Field{Type: byteSlice}}},
+			},
+			Body: &ast.BlockStmt{
+				List: append(r["Child"].(*Rule).Child.Compile(onFailure),
+					&ast.ReturnStmt{Results: []ast.Expr{input}},
+				),
+			},
+		})
 	}
-	file.Decls = append(file.Decls, &ast.FuncDecl{
-		Name: ast.NewIdent("rule"),
-		Type: &ast.FuncType{
-			Params:  &ast.FieldList{List: []*ast.Field{&ast.Field{Names: []*ast.Ident{input}, Type: byteSlice}}},
-			Results: &ast.FieldList{List: []*ast.Field{&ast.Field{Type: byteSlice}}},
-		},
-		Body: &ast.BlockStmt{
-			List: append(rule.(*Rule).Child.Compile(onFailure),
-				&ast.ReturnStmt{Results: []ast.Expr{input}},
-			),
-		},
-	})
 
 	return file
 }
