@@ -1,0 +1,150 @@
+rule Grammar
+  ws? Rules:(
+    'rule' ws :ruleName Parameters:( '[' localValue*[ ',' ws ] ']' )? ws Child:ParsingRule 'end' ws
+  )*
+end
+
+rule ParsingRule
+  ws? Child:expression <Rule>
+end
+
+rule expression
+  ( '/' ws )? choice
+end
+
+rule choice
+  Children:creator+[ '/' ws ] <Choice>
+end
+
+rule creator
+  / Child:sequence '<' ClassName:alphanumericChar+ ( ws :data )? '>' ws <ObjectCreator>
+  / Child:sequence '{' :code '}' ws <ValueCreator>
+  / sequence
+end
+
+rule data
+  / :string <StringData>
+  / ( 'true' Value:$true / 'false' Value:$false ) <BooleanData>
+  / '{' Entries:(
+      ws Label:alphanumericChar+ ':' ws :data <HashDataEntry>
+    )*[ ',' ] ws '}' <HashData>
+  / '[' Entries:(
+      ws :data <ArrayDataEntry>
+    )*[ ',' ] ws ']' <ArrayData>
+  / '<' ClassName:alphanumericChar+ ws :data '>' <ObjectData>
+  / '@' Name:alphanumericChar+ <LabelData>
+end
+
+rule code
+  @:( ![{}] . / '{' code '}' )*
+end
+
+rule sequence
+  Children:labeled+ <Sequence>
+end
+
+rule labeled
+  / ( '%' IsLocal:$true )? Name:( '@' / alphaChar alphanumericChar* ) ':' Child:lookahead <Label>
+  / lookahead
+end
+
+rule lookahead
+  / '&' Child:repetition <PositiveLookahead>
+  / '!' Child:repetition <NegativeLookahead>
+  / repetition
+end
+
+rule repetition
+  / Child:primary '?' ws <Choice { Children: [ @Child, <EmptyParsingExpression { }> ] }>
+  / Child:primary '*->' UntilExpression:primary <Until>
+  / Child:primary ( '*' AtLeastOnce:$false / '+' AtLeastOnce:$true ) ( '[' ws GlueExpression:expression ']' )? ws <Repetition>
+  / primary ws
+end
+
+rule primary
+  / terminal
+  / ruleCall
+  / parenthesizedExpression
+  / function
+  / localValue
+end
+
+rule terminal
+  / '\'' Chars:( '\\' . / !'\'' . )* '\'' Fold:$false <StringTerminal>
+  / '"' Chars:( '\\' . / !'"' . )* '"' Fold:$true <StringTerminal>
+  / '[' ( '^' Inverted:$true )? Selections:characterClassSelector* ']' <CharacterClassTerminal>
+  / '.' <CharacterClassTerminal { Selections: [ <CharacterClassSingleCharacter { Char: '\\0' }> ], Inverted: true }>
+end
+
+rule characterClassSelector
+  / BeginChar:characterClassSingleCharacter '-' EndChar:characterClassSingleCharacter <CharacterClassRange>
+  / Char:characterClassSingleCharacter <CharacterClassSingleCharacter>
+end
+
+rule characterClassSingleCharacter
+  !']' ( '\\' . / . )
+end
+
+rule ruleCall
+  / ':' Name:ruleName :arguments? <Label { Name: @Name, Child: <RuleCall { Name: @Name, Arguments: @arguments }> }>
+  / Name:ruleName :arguments? <RuleCall>
+end
+
+rule arguments
+  '[' (
+    / :string <StringValue>
+    / function
+    / localValue
+  )*[ ',' ws ] ']'
+end
+
+rule parenthesizedExpression
+  / '(' ws ')' <EmptyParsingExpression { }>
+  / '(' ws Child:expression ')' <ParenthesizedExpression>
+end
+
+rule function
+  / '$True' <TrueFunction>
+  / '$False' <FalseFunction>
+  / '$Match' '[' Value:localValue ']' <MatchFunction>
+  / '$Error' '[' Msg:string ']' <ErrorFunction>
+  / '$EnterMode' '[' Name:string ',' ws Child:expression ']' <EnterModeFunction>
+  / '$LeaveMode' '[' Name:string ',' ws Child:expression ']' <LeaveModeFunction>
+  / '$InMode' '[' Name:string ']' <InModeFunction>
+end
+
+rule localValue
+  '%' Name:( alphaChar alphanumericChar* ) <LocalValue>
+end
+
+rule ruleName
+  !keyword @:( alphaChar alphanumericChar* )
+end
+
+rule string
+  '\'' @:( !'\'' ( '\\' . / . ) )* '\''
+end
+
+rule keyword
+  ( 'rule' / 'end' ) &singlews
+end
+
+rule alphaChar
+  [A-Za-z_]
+end
+
+rule alphanumericChar
+  alphaChar / [0-9]
+end
+
+rule ws
+  singlews+ / &']' / &'\0'
+end
+
+rule singlews
+  [ \t\n\r] / lineComment
+end
+
+rule lineComment
+  '#' [^\n]*
+end

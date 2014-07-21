@@ -1,0 +1,10 @@
+$: << "../jetpeg/lib"
+
+task :default do
+  require "jetpeg"
+  parser = JetPEG.load File.join(File.dirname(__FILE__), "metagrammar.peg")
+  parser[:Grammar].is_root = true
+  parser[:ParsingRule].is_root = true
+  parser.build
+  parser.mod.write_bitcode File.join(File.dirname(__FILE__), "metagrammar.bc")
+end
