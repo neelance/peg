@@ -131,7 +131,7 @@ func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
 				Results: &ast.FieldList{List: []*ast.Field{&ast.Field{Type: byteSlice}}},
 			},
 			Body: &ast.BlockStmt{
-				List: append(r["Child"].(*Rule).Child.Compile(onFailure),
+				List: append(compileExpr(r["Child"].(*Rule).Child, onFailure),
 					&ast.ReturnStmt{Results: []ast.Expr{input}},
 				),
 			},
@@ -139,20 +139,4 @@ func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
 	}
 
 	return file
-}
-
-type Rule struct {
-	// RuleName   jetpeg.Stringer
-	// Parameters []interface{}
-	Child ParsingExpression
-}
-
-type ParsingExpression interface {
-	Compile(onFailure func() []ast.Stmt) []ast.Stmt
-}
-
-type EmptyParsingExpression struct{}
-
-func (e *EmptyParsingExpression) Compile(onFailure func() []ast.Stmt) []ast.Stmt {
-	return nil
 }
