@@ -1,4 +1,4 @@
-package peglib
+package peggen
 
 import (
 	"bytes"
@@ -454,7 +454,7 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 				Tok: token.IMPORT,
 				Specs: []ast.Spec{
 					&ast.ImportSpec{
-						Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/runtime"`},
+						Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/peglib"`},
 					},
 				},
 			},
@@ -462,7 +462,7 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 				Name: ast.NewIdent("main"),
 				Type: &ast.FuncType{},
 				Body: &ast.BlockStmt{
-					List: []ast.Stmt{&ast.ExprStmt{X: pegruntimeCall("Test", ast.NewIdent(mainRule))}},
+					List: []ast.Stmt{&ast.ExprStmt{X: peglibCall("Test", ast.NewIdent(mainRule))}},
 				},
 			},
 		),

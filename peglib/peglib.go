@@ -1,4 +1,4 @@
-package pegruntime
+package peglib
 
 import (
 	"bytes"

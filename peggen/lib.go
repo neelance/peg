@@ -1,4 +1,4 @@
-package peglib
+package peggen
 
 import (
 	"github.com/neelance/jetpeg"

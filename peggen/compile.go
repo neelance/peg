@@ -1,4 +1,4 @@
-package peglib
+package peggen
 
 import (
 	"github.com/neelance/jetpeg"
@@ -20,7 +20,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		}
 		return []ast.Stmt{
 			&ast.IfStmt{
-				Cond: not(pegruntimeCall(hasPrefixFun, input, &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(str))})),
+				Cond: not(peglibCall(hasPrefixFun, input, &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(str))})),
 				Body: &ast.BlockStmt{List: onFailure()},
 			},
 			consumeInput(intConst(len(str))),
@@ -59,7 +59,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 			}
 		}
 
-		cond := pegruntimeCall("ContainsByte", &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(selections))}, &ast.IndexExpr{X: input, Index: intConst(0)})
+		cond := peglibCall("ContainsByte", &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(selections))}, &ast.IndexExpr{X: input, Index: intConst(0)})
 		if !e.Inverted {
 			cond = not(cond)
 		}
@@ -231,9 +231,9 @@ func newIdent(prefix string) *ast.Ident {
 	return &ast.Ident{Name: prefix + strconv.Itoa(nameCounters[prefix]), Obj: &ast.Object{}}
 }
 
-func pegruntimeCall(fun string, args ...ast.Expr) ast.Expr {
+func peglibCall(fun string, args ...ast.Expr) ast.Expr {
 	return &ast.CallExpr{
-		Fun:  &ast.SelectorExpr{X: ast.NewIdent("pegruntime"), Sel: ast.NewIdent(fun)},
+		Fun:  &ast.SelectorExpr{X: ast.NewIdent("peglib"), Sel: ast.NewIdent(fun)},
 		Args: args,
 	}
 }
