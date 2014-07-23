@@ -85,22 +85,21 @@ func Compile(grammar string) []ast.Decl {
 	for _, rule := range g.(map[string]interface{})["Rules"].([]interface{}) {
 		r := rule.(map[string]interface{})
 
-		onFailure := func() []ast.Stmt {
+		c := &Context{}
+		body := c.compileExpr(r["Child"].(*Rule).Child, func() []ast.Stmt {
 			return []ast.Stmt{
 				&ast.ReturnStmt{Results: []ast.Expr{ast.NewIdent("nil")}},
 			}
-		}
+		})
+		body = append(body, &ast.ReturnStmt{Results: []ast.Expr{input}})
+
 		decls = append(decls, &ast.FuncDecl{
 			Name: ast.NewIdent(r["Name"].(jetpeg.Stringer).String()),
 			Type: &ast.FuncType{
 				Params:  &ast.FieldList{List: []*ast.Field{&ast.Field{Names: []*ast.Ident{input}, Type: byteSlice}}},
 				Results: &ast.FieldList{List: []*ast.Field{&ast.Field{Type: byteSlice}}},
 			},
-			Body: &ast.BlockStmt{
-				List: append(compileExpr(r["Child"].(*Rule).Child, onFailure),
-					&ast.ReturnStmt{Results: []ast.Expr{input}},
-				),
-			},
+			Body: &ast.BlockStmt{List: body},
 		})
 	}
 	return decls

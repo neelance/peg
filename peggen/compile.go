@@ -7,7 +7,10 @@ import (
 	"strconv"
 )
 
-func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt {
+type Context struct {
+}
+
+func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt {
 	switch e := expr.(type) {
 	case *StringTerminal:
 		str, err := strconv.Unquote(`"` + e.Chars.String() + `"`)
@@ -20,7 +23,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		}
 		return []ast.Stmt{
 			&ast.IfStmt{
-				Cond: not(peglibCall(hasPrefixFun, input, &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(str))})),
+				Cond: not(peglibCall(hasPrefixFun, input, stringConst(string(str)))),
 				Body: &ast.BlockStmt{List: onFailure()},
 			},
 			consumeInput(intConst(len(str))),
@@ -41,11 +44,11 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 			case `\0`:
 				return 0
 			}
-			c, _, _, err := strconv.UnquoteChar(str, 0)
+			char, _, _, err := strconv.UnquoteChar(str, 0)
 			if err != nil {
 				panic(err)
 			}
-			return c
+			return char
 		}
 		var selections []rune
 		for _, sel := range e.Selections {
@@ -59,7 +62,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 			}
 		}
 
-		cond := peglibCall("ContainsByte", &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(selections))}, &ast.IndexExpr{X: input, Index: intConst(0)})
+		cond := peglibCall("ContainsByte", stringConst(string(selections)), &ast.IndexExpr{X: input, Index: intConst(0)})
 		if !e.Inverted {
 			cond = not(cond)
 		}
@@ -73,27 +76,27 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 
 	case *Sequence:
 		var stmts []ast.Stmt
-		for _, c := range e.Children {
-			stmts = append(stmts, compileExpr(c.(ParsingExpression), onFailure)...)
+		for _, child := range e.Children {
+			stmts = append(stmts, c.compileExpr(child.(ParsingExpression), onFailure)...)
 		}
 		return stmts
 
 	case *Choice:
 		if len(e.Children) == 1 {
-			return compileExpr(e.Children[0].(ParsingExpression), onFailure)
+			return c.compileExpr(e.Children[0].(ParsingExpression), onFailure)
 		}
 
 		choiceSuccessful := newDynamicLabel("choiceSuccessful")
 		beforeChoice := newIdent("beforeChoice")
 		stmts := []ast.Stmt{simpleDefine(beforeChoice, input)}
-		for i, c := range e.Children {
+		for i, child := range e.Children {
 			if i == len(e.Children)-1 {
-				stmts = append(stmts, compileExpr(c.(ParsingExpression), onFailure)...)
+				stmts = append(stmts, c.compileExpr(child.(ParsingExpression), onFailure)...)
 				break
 			}
 			nextChoice := newDynamicLabel("nextChoice")
-			stmts = append(stmts, compileExpr(c.(ParsingExpression), nextChoice.GotoSlice)...)
 			stmts = append(stmts,
+				&ast.BlockStmt{List: c.compileExpr(child.(ParsingExpression), nextChoice.GotoSlice)},
 				choiceSuccessful.Goto(),
 				nextChoice.WithLabel(nil),
 				simpleAssign(input, beforeChoice),
@@ -132,10 +135,10 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		if e.GlueExpression != nil {
 			body = append(body, &ast.IfStmt{
 				Cond: not(first),
-				Body: &ast.BlockStmt{List: compileExpr(e.GlueExpression, breakLoop)},
+				Body: &ast.BlockStmt{List: c.compileExpr(e.GlueExpression, breakLoop)},
 			})
 		}
-		body = append(body, compileExpr(e.Child, breakLoop)...)
+		body = append(body, c.compileExpr(e.Child, breakLoop)...)
 		if repetitionLabel.Used {
 			body = append([]ast.Stmt{simpleDefine(beforeRepetition, input)}, body...)
 		}
@@ -152,9 +155,9 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		checkFailed := newDynamicLabel("checkFailed")
 		beforeCheck := newIdent("beforeCheck")
 		body := []ast.Stmt{simpleDefine(beforeCheck, input)}
-		body = append(body, compileExpr(e.UntilExpression, checkFailed.GotoSlice)...)
+		body = append(body, c.compileExpr(e.UntilExpression, checkFailed.GotoSlice)...)
 		body = append(body, untilLabel.Break(), checkFailed.WithLabel(simpleAssign(input, beforeCheck)))
-		body = append(body, compileExpr(e.Child, onFailure)...)
+		body = append(body, c.compileExpr(e.Child, onFailure)...)
 		return []ast.Stmt{
 			untilLabel.WithLabel(&ast.ForStmt{
 				Body: &ast.BlockStmt{List: body},
@@ -165,7 +168,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		beforeLookahead := newIdent("beforeLookahead")
 		var stmts []ast.Stmt
 		stmts = append(stmts, simpleDefine(beforeLookahead, input))
-		stmts = append(stmts, compileExpr(e.Child, onFailure)...)
+		stmts = append(stmts, c.compileExpr(e.Child, onFailure)...)
 		stmts = append(stmts, simpleAssign(input, beforeLookahead))
 		return stmts
 
@@ -174,7 +177,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		beforeLookahead := newIdent("beforeLookahead")
 		var stmts []ast.Stmt
 		stmts = append(stmts, simpleDefine(beforeLookahead, input))
-		stmts = append(stmts, compileExpr(e.Child, lookaheadSuccessful.GotoSlice)...)
+		stmts = append(stmts, c.compileExpr(e.Child, lookaheadSuccessful.GotoSlice)...)
 		stmts = append(stmts, onFailure()...)
 		stmts = append(stmts, lookaheadSuccessful.WithLabel(simpleAssign(input, beforeLookahead)))
 		return stmts
@@ -192,13 +195,68 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		}
 
 	case *ParenthesizedExpression:
-		return compileExpr(e.Child, onFailure)
+		return c.compileExpr(e.Child, onFailure)
 
 	case *EmptyParsingExpression:
 		return nil
 
+	case *Label:
+		stmts := c.compileExpr(e.Child, onFailure)
+		nameIsAt := e.Name.String() == "@"
+		childHasReturnValue := hasReturnValue(e.Child)
+
+		if childHasReturnValue && nameIsAt {
+			stmts = append(stmts, exprStmt(peglibCall("Pop")))
+			childHasReturnValue = false
+		}
+		if !childHasReturnValue {
+			labelStart := newIdent("labelStart")
+			stmts = append([]ast.Stmt{simpleDefine(labelStart, input)}, stmts...)
+			stmts = append(stmts, exprStmt(peglibCall("PushInputRange", labelStart, input)))
+		}
+
+		switch {
+		case e.IsLocal:
+			stmts = append(stmts, exprStmt(peglibCall("LocalsPush", intConst(1))))
+		case nameIsAt:
+			// don't add label
+		default:
+			stmts = append(stmts, exprStmt(peglibCall("MakeLabel", stringConst(e.Name.String()))))
+		}
+
+		return stmts
+
 	default:
-		panic("compileExpr not implemented for given type")
+		panic("c.compileExpr not implemented for given type")
+	}
+}
+
+func hasReturnValue(expr ParsingExpression) bool {
+	switch e := expr.(type) {
+	case *Sequence:
+		for _, child := range e.Children {
+			if hasReturnValue(child.(ParsingExpression)) {
+				return true
+			}
+		}
+		return false
+
+	case *Choice:
+		for _, child := range e.Children {
+			if hasReturnValue(child.(ParsingExpression)) {
+				return true
+			}
+		}
+		return false
+
+	case *ParenthesizedExpression:
+		return hasReturnValue(e.Child)
+
+	case *Label:
+		return !e.IsLocal
+
+	default:
+		return false
 	}
 }
 
@@ -220,8 +278,16 @@ func intConst(i int) ast.Expr {
 	return &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)}
 }
 
+func stringConst(s string) ast.Expr {
+	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(s)}
+}
+
 func not(x ast.Expr) ast.Expr {
 	return &ast.UnaryExpr{Op: token.NOT, X: x}
+}
+
+func exprStmt(x ast.Expr) ast.Stmt {
+	return &ast.ExprStmt{X: x}
 }
 
 var nameCounters = make(map[string]int)

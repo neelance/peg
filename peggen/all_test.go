@@ -11,6 +11,7 @@ import (
 	"go/printer"
 	"go/token"
 	"os"
+	"os/exec"
 	"testing"
 )
 
@@ -226,33 +227,32 @@ func TestRecursiveRule(t *testing.T) {
 	})
 }
 
-// func TestLabel(t *testing.T) {
-// 	testRule(t, `'a' char:. 'c' / 'def'`, map[string]bool {
-// 	//     result = rule.parse "abc"
-// 	//     assert result == { char: "b" }
-// 	//     assert result[:char] == "b"
-// 	//     assert result[:char] === "b"
-// 	//     assert "b" == result[:char]
-// 	//     assert "b" === result[:char]
+func TestLabel(t *testing.T) {
+	testRule(t, `'a' char:. 'c' / 'def'`, map[string]string{
+		"abc": `{"char":"b"}`,
+	})
 
-// 	testRule(t, `word:( 'a' 'b' 'c' )`, map[string]bool {
-// 	"abc") == { word: "abc" : "true",
+	testRule(t, `word:( 'a' 'b' 'c' )`, map[string]string{
+		"abc": `{"word":"abc"}`,
+	})
 
-// 	testRule(t, `( word:[abc]+ )?`, map[string]bool {
-// 	"abc") == { word: "abc" : "true",
-// 	"") == {: "true",
+	testRule(t, `( word:[abc]+ )?`, map[string]string{
+		"abc": `{"word":"abc"}`,
+		"":    "true",
+	})
 
-// 	testRule(t, `'a' outer:( inner:. ) 'c' / 'def'`, map[string]bool {
-// 	"abc") == { outer: { inner: "b" } : "true",
-// }
+	testRule(t, `'a' outer:( inner:. ) 'c' / 'def'`, map[string]string{
+		"abc": `{"outer":{"inner":"b"}}`,
+	})
+}
 
 // func TestNestedLabel(t *testing.T) {
-// 	testRule(t, `word:( 'a' char:. 'c' )`, map[string]bool {
+// 	testRule(t, `word:( 'a' char:. 'c' )`, map[string]string {
 // 	"abc") == { word: { char: "b" } : "true",
 // }
 
 // func TestAtLabel(t *testing.T) {
-// 	testRule(t, `'a' @:. 'c'`, map[string]bool {
+// 	testRule(t, `'a' @:. 'c'`, map[string]string {
 // 	"abc") == "b: "true",
 
 // 	testGrammar(t, `
@@ -267,7 +267,7 @@ func TestRecursiveRule(t *testing.T) {
 // }
 
 // func TestLabelMerge(t *testing.T) {
-// 	testRule(t, `( char:'a' x:'x' / 'b' x:'x' / char:( inner:'c' ) x:'x' ) / 'y'`, map[string]bool {
+// 	testRule(t, `( char:'a' x:'x' / 'b' x:'x' / char:( inner:'c' ) x:'x' ) / 'y'`, map[string]string {
 // 	"ax") == { char: "a", x: "x" : "true",
 // 	"bx") == { x: "x" : "true",
 // 	"cx") == { char: { inner: "c" }, x: "x" : "true",
@@ -312,16 +312,16 @@ func TestRecursiveRule(t *testing.T) {
 // }
 
 // func TestRepetitionWithLabel(t *testing.T) {
-// 	testRule(t, `list:( char:( 'a' / 'b' / 'c' ) )*`, map[string]bool {
+// 	testRule(t, `list:( char:( 'a' / 'b' / 'c' ) )*`, map[string]string {
 // 	"abc") == { list: [{ char: "a" }, { char: "b" }, { char: "c" }] : "true",
 
-// 	testRule(t, `list:( char:'a' / char:'b' / 'c' )+`, map[string]bool {
+// 	testRule(t, `list:( char:'a' / char:'b' / 'c' )+`, map[string]string {
 // 	"abc") == { list: [{ char: "a" }, { char: "b" }, {}] : "true",
 
-// 	testRule(t, `( 'a' / 'b' / 'c' )+`, map[string]bool {
+// 	testRule(t, `( 'a' / 'b' / 'c' )+`, map[string]string {
 // 	"abc") == {: "true",
 
-// 	testRule(t, `list:( 'a' char:. )*->( 'ada' final:. )`, map[string]bool {
+// 	testRule(t, `list:( 'a' char:. )*->( 'ada' final:. )`, map[string]string {
 // 	"abacadae") == { list: [{ char: "b" }, { char: "c" }, { final: "e" }] : "true",
 
 // 	testGrammar(t, `
@@ -333,16 +333,16 @@ func TestRecursiveRule(t *testing.T) {
 // }
 
 // func TestObjectCreator(t *testing.T) {
-// 	testRule(t, `'a' char:. 'c' <TestClassA> / 'd' char:. 'f' <TestClassB>", class_scope: self.clas`, map[string]bool {
+// 	testRule(t, `'a' char:. 'c' <TestClassA> / 'd' char:. 'f' <TestClassB>", class_scope: self.clas`, map[string]string {
 // 	"abc") == TestClassA.new({ char: "b" }: "true",
 // 	"def") == TestClassB.new({ char: "e" }: "true",
 
-// 	testRule(t, `'a' char:. 'c' <TestClassA { a: 'test1', b: [ <TestClassB "true">, <TestClassB { r: @char }> ] }>", class_scope: self.clas`, map[string]bool {
+// 	testRule(t, `'a' char:. 'c' <TestClassA { a: 'test1', b: [ <TestClassB "true">, <TestClassB { r: @char }> ] }>", class_scope: self.clas`, map[string]string {
 // 	"abc") == TestClassA.new({ a: "test1", b: [ TestClassB.new("true"), TestClassB.new({ r: "b" }) ] }: "true",
 // }
 
 // func TestValueCreator(t *testing.T) {
-// 	testRule(t, `, map[string]bool {
+// 	testRule(t, `, map[string]string {
 // 	//       'a' char:. 'c' { @char.upcase } /
 // 	//       word:'def' { @word.chars.map { |c| c.ord } } /
 // 	//       'ghi' { [__FILE__, __LINE__] }
@@ -353,11 +353,11 @@ func TestRecursiveRule(t *testing.T) {
 // }
 
 // func TestLocalLabel(t *testing.T) {
-// 	testRule(t, `'a' %temp:( char:'b' )* 'c' ( result:%temp )`, map[string]bool {
+// 	testRule(t, `'a' %temp:( char:'b' )* 'c' ( result:%temp )`, map[string]string {
 // 	"abc") == { result: [{ char: "b" }] : "true",
 // 	"abX") == ni: "true",
 
-// 	testRule(t, `'a' %temp:( char:'b' )* 'c' result1:%temp result2:%temp`, map[string]bool {
+// 	testRule(t, `'a' %temp:( char:'b' )* 'c' result1:%temp result2:%temp`, map[string]string {
 // 	"abc") == { result1: [{ char: "b" }], result2: [{ char: "b" }] : "true",
 // }
 
@@ -375,7 +375,7 @@ func TestRecursiveRule(t *testing.T) {
 
 // func TestUndefinedLocalLabelError(t *testing.T) {
 // 	//     assert_raise JetPEG::CompilationError do
-// 	testRule(t, `char:%missing`, map[string]bool {
+// 	testRule(t, `char:%missing`, map[string]string {
 // 	//       rule.parse "abc"
 // 	//     end
 // }
@@ -397,19 +397,19 @@ func TestRecursiveRule(t *testing.T) {
 // }
 
 // func TestBooleanFunctions(t *testing.T) {
-// 	testRule(t, `'a' v:$"true" 'bc' / 'd' v:$"false 'ef'`, map[string]bool "{
+// 	testRule(t, `'a' v:$"true" 'bc' / 'd' v:$"false 'ef'`, map[string]string "{
 // 	"abc") == { v: "true" : "true",
 // 	"def") == { v: "false : "true"",
 //   })
 
-// 	testRule(t, `'a' ( 'b' v:$"true" )? 'c'`, map[string]bool {
+// 	testRule(t, `'a' ( 'b' v:$"true" )? 'c'`, map[string]string {
 // 	"abc") == { v: "true" : "true",
 // 	"ac") == {: "true",
 //   })
 // }
 
 // func TestErrorFunction(t *testing.T) {
-// 	testRule(t, `'a' $error['test'] 'bc'`, map[string]bool {
+// 	testRule(t, `'a' $error['test'] 'bc'`, map[string]string {
 // 	"abc": "false",
 // 	//     assert rule.parser.failure_reason.is_a? JetPEG::ParsingError
 // 	//     assert rule.parser.failure_reason.position == 1
@@ -417,7 +417,7 @@ func TestRecursiveRule(t *testing.T) {
 // }
 
 // func TestMatchFunction(t *testing.T) {
-// 	testRule(t, `%a:( . . ) $match[%a]`, map[string]bool {
+// 	testRule(t, `%a:( . . ) $match[%a]`, map[string]string {
 // 	"abab": "true",
 // 	"cdcd": "true",
 // 	"a": "false",
@@ -449,28 +449,59 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 	file := &ast.File{
 		Name: ast.NewIdent("main"),
 		Decls: append(
-			Compile(grammar),
-			&ast.GenDecl{
-				Tok: token.IMPORT,
-				Specs: []ast.Spec{
-					&ast.ImportSpec{
-						Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/peglib"`},
+			[]ast.Decl{
+				&ast.GenDecl{
+					Tok: token.IMPORT,
+					Specs: []ast.Spec{
+						&ast.ImportSpec{
+							Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/peglib"`},
+						},
+					},
+				},
+				&ast.FuncDecl{
+					Name: ast.NewIdent("main"),
+					Type: &ast.FuncType{},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{&ast.ExprStmt{X: peglibCall("Test", ast.NewIdent(mainRule))}},
 					},
 				},
 			},
-			&ast.FuncDecl{
-				Name: ast.NewIdent("main"),
-				Type: &ast.FuncType{},
-				Body: &ast.BlockStmt{
-					List: []ast.Stmt{&ast.ExprStmt{X: peglibCall("Test", ast.NewIdent(mainRule))}},
-				},
-			},
+			Compile(grammar)...,
 		),
 	}
 
 	if false {
 		printer.Fprint(os.Stdout, token.NewFileSet(), file)
 	}
+
+	os.Mkdir("tmp", 0777)
+	testfile, err := os.Create("tmp/test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	printer.Fprint(testfile, token.NewFileSet(), file)
+	testfile.Close()
+
+	for input, expected := range inputs {
+		output, err := exec.Command("go", "run", testfile.Name(), input).CombinedOutput()
+		if err != nil {
+			t.Log(string(output))
+			t.Fatal(err)
+		}
+
+		expected += "\n"
+		got := string(output)
+		if expected != got {
+			t.Errorf("grammar %q gave wrong result on %q: expected %q, got %q", grammar, input, expected, got)
+		}
+	}
+
+	if !t.Failed() {
+		os.Remove(testfile.Name())
+		os.Remove("tmt")
+	}
+	return
 
 	config := loader.Config{
 		Fset:  token.NewFileSet(),

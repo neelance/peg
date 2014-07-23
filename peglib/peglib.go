@@ -2,6 +2,7 @@ package peglib
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -11,18 +12,14 @@ type Stringer interface {
 	String() string
 }
 
-type InputRange struct {
-	Input []byte
-	Start int
-	End   int
+type InputRange []byte
+
+func (r InputRange) String() string {
+	return string(r)
 }
 
-func (r *InputRange) Bytes() []byte {
-	return r.Input[r.Start:r.End]
-}
-
-func (r *InputRange) String() string {
-	return string(r.Bytes())
+func (r InputRange) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(r))
 }
 
 type StringData string
@@ -59,7 +56,6 @@ func (e *ParsingError) Error() string {
 
 var Debug = false
 var Factory = func(class string, value interface{}) interface{} { return value }
-var input []byte
 var inputOffset uintptr
 var outputStack []interface{}
 var localsStack []interface{}
@@ -74,7 +70,13 @@ func Test(rule func([]byte) []byte) {
 		fmt.Println("false")
 		return
 	}
-	fmt.Println("true")
+	if len(outputStack) == 0 {
+		fmt.Println("true")
+		return
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(outputStack[0]); err != nil {
+		panic(err)
+	}
 }
 
 func HasPrefix(input []byte, prefix string) bool {
@@ -103,14 +105,14 @@ func PushEmpty() {
 	if Debug {
 		fmt.Printf("pushEmpty()\n")
 	}
-	outputStack = append(outputStack, make(map[string]interface{}))
+	pushOutput(make(map[string]interface{}))
 }
 
-func PushInputRange(from uintptr, to uintptr) {
+func PushInputRange(startInput, endInput []byte) {
 	if Debug {
-		fmt.Printf("pushInputRange(%d, %d)\n", from-inputOffset, to-inputOffset)
+		fmt.Printf("pushInputRange(...)\n")
 	}
-	pushOutput(&InputRange{input, int(from - inputOffset), int(to - inputOffset)})
+	pushOutput(InputRange(startInput[:len(startInput)-len(endInput)]))
 }
 
 func PushBoolean(value bool) {
@@ -212,25 +214,25 @@ func LocalsPop(count int) {
 	localsStack = localsStack[:len(localsStack)-int(count)]
 }
 
-func Match(absPos uintptr) uintptr {
-	pos := absPos - inputOffset
-	if Debug {
-		fmt.Printf("match(%d)\n", pos)
-	}
-	var expected []byte
-	switch e := popOutput().(type) {
-	case *InputRange:
-		expected = e.Bytes()
-	case StringData:
-		expected = []byte(e)
-	default:
-		panic("invalid type for match")
-	}
-	if bytes.HasPrefix(input[pos:], expected) {
-		return absPos + uintptr(len(expected))
-	}
-	return 0
-}
+// func Match(absPos uintptr) uintptr {
+// 	pos := absPos - inputOffset
+// 	if Debug {
+// 		fmt.Printf("match(%d)\n", pos)
+// 	}
+// 	var expected []byte
+// 	switch e := popOutput().(type) {
+// 	case InputRange:
+// 		expected = e.Bytes()
+// 	case StringData:
+// 		expected = []byte(e)
+// 	default:
+// 		panic("invalid type for match")
+// 	}
+// 	if bytes.HasPrefix(input[pos:], expected) {
+// 		return absPos + uintptr(len(expected))
+// 	}
+// 	return 0
+// }
 
 func SetAsSource() {
 	if Debug {
