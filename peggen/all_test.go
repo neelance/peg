@@ -1,13 +1,7 @@
 package peggen
 
 import (
-	"bytes"
-	"code.google.com/p/go.tools/go/loader"
-	"code.google.com/p/go.tools/go/ssa"
-	"code.google.com/p/go.tools/go/ssa/interp"
-	"code.google.com/p/go.tools/go/types"
 	"go/ast"
-	"go/build"
 	"go/printer"
 	"go/token"
 	"os"
@@ -470,10 +464,6 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 		),
 	}
 
-	if false {
-		printer.Fprint(os.Stdout, token.NewFileSet(), file)
-	}
-
 	os.Mkdir("tmp", 0777)
 	testfile, err := os.Create("tmp/test.go")
 	if err != nil {
@@ -500,40 +490,5 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 	if !t.Failed() {
 		os.Remove(testfile.Name())
 		os.Remove("tmt")
-	}
-	return
-
-	config := loader.Config{
-		Fset:  token.NewFileSet(),
-		Build: &build.Default,
-		TypeChecker: types.Config{
-			Packages: make(map[string]*types.Package),
-			Sizes:    &types.StdSizes{8, 8},
-			Error: func(err error) {
-				t.Error(err)
-			},
-		},
-	}
-	config.CreateFromFiles("main", file)
-	config.SourceImports = true
-	iprog, err := config.Load()
-	if err != nil {
-		t.Error(err)
-	}
-
-	prog := ssa.Create(iprog, ssa.SanityCheckFunctions)
-	prog.BuildAll()
-
-	for input, expected := range inputs {
-		interp.CapturedOutput = bytes.NewBuffer(nil)
-		if exitCode := interp.Interpret(prog.Package(iprog.Created[0].Pkg), 0, config.TypeChecker.Sizes, "main.go", []string{input}); exitCode != 0 {
-			t.Errorf("exit code: %d", exitCode)
-			continue
-		}
-		expected += "\n"
-		got := interp.CapturedOutput.String()
-		if expected != got {
-			t.Errorf("grammar %q gave wrong result on %q: expected %q, got %q", grammar, input, expected, got)
-		}
 	}
 }
