@@ -69,7 +69,7 @@ var failurePosition int
 var failureExpectations []string
 var failureOtherReasons []string
 
-func Main(rule func([]byte) []byte) {
+func Test(rule func([]byte) []byte) {
 	inputAtEnd := rule(append([]byte(os.Args[1]), 0))
 	if len(inputAtEnd) != 1 || inputAtEnd[0] != 0 {
 		fmt.Println("false")

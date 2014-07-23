@@ -3,7 +3,6 @@ package peglib
 import (
 	"github.com/neelance/jetpeg"
 	"go/ast"
-	"go/token"
 	"reflect"
 	"strings"
 )
@@ -76,33 +75,13 @@ func init() {
 
 var byteSlice = &ast.ArrayType{Elt: ast.NewIdent("byte")}
 
-func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
+func Compile(grammar string) []ast.Decl {
 	g, err := metagrammarParser.Parse("Grammar", []byte(grammar))
 	if err != nil {
 		panic(err)
 	}
 
-	file := &ast.File{
-		Name: ast.NewIdent("main"),
-		Decls: []ast.Decl{
-			&ast.GenDecl{
-				Tok: token.IMPORT,
-				Specs: []ast.Spec{
-					&ast.ImportSpec{
-						Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/runtime"`},
-					},
-				},
-			},
-			&ast.FuncDecl{
-				Name: ast.NewIdent("main"),
-				Type: &ast.FuncType{},
-				Body: &ast.BlockStmt{
-					List: []ast.Stmt{&ast.ExprStmt{X: pegruntimeCall("Main", ast.NewIdent(mainRule))}},
-				},
-			},
-		},
-	}
-
+	var decls []ast.Decl
 	for _, rule := range g.(map[string]interface{})["Rules"].([]interface{}) {
 		r := rule.(map[string]interface{})
 
@@ -111,7 +90,7 @@ func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
 				&ast.ReturnStmt{Results: []ast.Expr{ast.NewIdent("nil")}},
 			}
 		}
-		file.Decls = append(file.Decls, &ast.FuncDecl{
+		decls = append(decls, &ast.FuncDecl{
 			Name: ast.NewIdent(r["Name"].(jetpeg.Stringer).String()),
 			Type: &ast.FuncType{
 				Params:  &ast.FieldList{List: []*ast.Field{&ast.Field{Names: []*ast.Ident{input}, Type: byteSlice}}},
@@ -124,6 +103,5 @@ func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
 			},
 		})
 	}
-
-	return file
+	return decls
 }

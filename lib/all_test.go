@@ -6,6 +6,7 @@ import (
 	"code.google.com/p/go.tools/go/ssa"
 	"code.google.com/p/go.tools/go/ssa/interp"
 	"code.google.com/p/go.tools/go/types"
+	"go/ast"
 	"go/build"
 	"go/printer"
 	"go/token"
@@ -445,15 +446,34 @@ func testRule(t *testing.T, rule string, inputs map[string]string) {
 }
 
 func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]string) {
-	fset := token.NewFileSet()
-	file := Compile(grammar, mainRule, fset)
+	file := &ast.File{
+		Name: ast.NewIdent("main"),
+		Decls: append(
+			Compile(grammar),
+			&ast.GenDecl{
+				Tok: token.IMPORT,
+				Specs: []ast.Spec{
+					&ast.ImportSpec{
+						Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/runtime"`},
+					},
+				},
+			},
+			&ast.FuncDecl{
+				Name: ast.NewIdent("main"),
+				Type: &ast.FuncType{},
+				Body: &ast.BlockStmt{
+					List: []ast.Stmt{&ast.ExprStmt{X: pegruntimeCall("Test", ast.NewIdent(mainRule))}},
+				},
+			},
+		),
+	}
 
 	if false {
-		printer.Fprint(os.Stdout, fset, file)
+		printer.Fprint(os.Stdout, token.NewFileSet(), file)
 	}
 
 	config := loader.Config{
-		Fset:  fset,
+		Fset:  token.NewFileSet(),
 		Build: &build.Default,
 		TypeChecker: types.Config{
 			Packages: make(map[string]*types.Package),
