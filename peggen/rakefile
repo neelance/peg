@@ -1,4 +1,4 @@
-$: << "../jetpeg/lib"
+$: << "../../jetpeg/lib"
 
 task :default do
   require "jetpeg"

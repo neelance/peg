@@ -57,7 +57,6 @@ func (e *ParsingError) Error() string {
 	return fmt.Sprintf("at line %d, column %d (byte %d, after %q): %s", line, column, e.Position, string(before[prefixOffset:]), strings.Join(reasons, " / "))
 }
 
-// callbacks rely on global variables since Go has no easy way of passing closures to C and the JetPEG backend has no support for passing the parser object yet
 var Debug = false
 var Factory = func(class string, value interface{}) interface{} { return value }
 var input []byte

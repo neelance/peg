@@ -67,7 +67,7 @@ func init() {
 	}
 
 	var err error
-	metagrammarParser, err = jetpeg.Load("/Users/richard/gopath/src/github.com/neelance/peg/metagrammar.bc")
+	metagrammarParser, err = jetpeg.Load("/Users/richard/gopath/src/github.com/neelance/peg/peggen/metagrammar.bc")
 	if err != nil {
 		panic(err)
 	}
