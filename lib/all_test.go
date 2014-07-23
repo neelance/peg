@@ -1,4 +1,4 @@
-package peg
+package peglib
 
 import (
 	"code.google.com/p/go.tools/go/loader"

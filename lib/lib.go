@@ -1,9 +1,8 @@
-package peg
+package peglib
 
 import (
 	"github.com/neelance/jetpeg"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"reflect"
 	"strings"
@@ -83,37 +82,25 @@ func Compile(grammar string, mainRule string, fset *token.FileSet) *ast.File {
 		panic(err)
 	}
 
-	file, err := parser.ParseFile(fset, "", `
-    package main
-
-    import (
-      "bytes"
-      "os"
-      "strings"
-    )
-
-    func HasPrefix(input []byte, prefix string) bool {
-      return len(input) >= len(prefix) && bytes.Equal(input[:len(prefix)], []byte(prefix))
-    }
-
-    func HasPrefixFold(input []byte, prefix string) bool {
-      return len(input) >= len(prefix) && bytes.EqualFold(input[:len(prefix)], []byte(prefix))
-    }
-
-    func dummy() {
-      strings.HasPrefix("", "")
-    }
-
-    func main() {
-      inputAtEnd := `+mainRule+`(append([]byte(os.Args[1]), 0))
-      if len(inputAtEnd) != 1 || inputAtEnd[0] != 0 {
-        os.Exit(101)
-      }
-      os.Exit(100)
-    }
-  `, 0)
-	if err != nil {
-		panic(err)
+	file := &ast.File{
+		Name: ast.NewIdent("main"),
+		Decls: []ast.Decl{
+			&ast.GenDecl{
+				Tok: token.IMPORT,
+				Specs: []ast.Spec{
+					&ast.ImportSpec{
+						Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/neelance/peg/runtime"`},
+					},
+				},
+			},
+			&ast.FuncDecl{
+				Name: ast.NewIdent("main"),
+				Type: &ast.FuncType{},
+				Body: &ast.BlockStmt{
+					List: []ast.Stmt{&ast.ExprStmt{X: pegruntimeCall("Main", ast.NewIdent(mainRule))}},
+				},
+			},
+		},
 	}
 
 	for _, rule := range g.(map[string]interface{})["Rules"].([]interface{}) {

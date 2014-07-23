@@ -1,4 +1,4 @@
-package peg
+package peglib
 
 import (
 	"github.com/neelance/jetpeg"
@@ -20,13 +20,7 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 		}
 		return []ast.Stmt{
 			&ast.IfStmt{
-				Cond: not(&ast.CallExpr{
-					Fun: ast.NewIdent(hasPrefixFun),
-					Args: []ast.Expr{
-						input,
-						&ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(str))},
-					},
-				}),
+				Cond: not(pegruntimeCall(hasPrefixFun, input, &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(str))})),
 				Body: &ast.BlockStmt{List: onFailure()},
 			},
 			consumeInput(intConst(len(str))),
@@ -65,23 +59,13 @@ func compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt
 			}
 		}
 
-		op := token.EQL
-		if e.Inverted {
-			op = token.NEQ
+		cond := pegruntimeCall("ContainsByte", &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(selections))}, &ast.IndexExpr{X: input, Index: intConst(0)})
+		if !e.Inverted {
+			cond = not(cond)
 		}
 		return []ast.Stmt{
 			&ast.IfStmt{
-				Cond: &ast.BinaryExpr{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{X: ast.NewIdent("strings"), Sel: ast.NewIdent("IndexByte")},
-						Args: []ast.Expr{
-							&ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(string(selections))},
-							&ast.IndexExpr{X: input, Index: intConst(0)},
-						},
-					},
-					Op: op,
-					Y:  intConst(-1),
-				},
+				Cond: cond,
 				Body: &ast.BlockStmt{List: onFailure()},
 			},
 			consumeInput(intConst(1)),
@@ -245,6 +229,13 @@ var nameCounters = make(map[string]int)
 func newIdent(prefix string) *ast.Ident {
 	nameCounters[prefix]++
 	return &ast.Ident{Name: prefix + strconv.Itoa(nameCounters[prefix]), Obj: &ast.Object{}}
+}
+
+func pegruntimeCall(fun string, args ...ast.Expr) ast.Expr {
+	return &ast.CallExpr{
+		Fun:  &ast.SelectorExpr{X: ast.NewIdent("pegruntime"), Sel: ast.NewIdent(fun)},
+		Args: args,
+	}
 }
 
 type dynamicLabel struct {
