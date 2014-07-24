@@ -391,17 +391,17 @@ func TestRepetitionWithLabel(t *testing.T) {
 //  //     assert grammar.parse_rule(:expr, "1-2-3") == { sub: { l: { sub: { l: "1", r: "2" } }, r: "3" } }
 // }
 
-// func TestBooleanFunctions(t *testing.T) {
-//  testRule(t, `'a' v:$"{}" 'bc' / 'd' v:$"false 'ef'`, map[string]string "{
-//  "abc") == { v: "{}" : "{}",
-//  "def") == { v: "false : "{}"",
-//   })
+func TestBooleanFunctions(t *testing.T) {
+	testRule(t, `'a' v:$True 'bc' / 'd' v:$False 'ef'`, map[string]string{
+		"abc": `{"v":true}`,
+		"def": `{"v":false}`,
+	})
 
-//  testRule(t, `'a' ( 'b' v:$"{}" )? 'c'`, map[string]string {
-//  "abc") == { v: "{}" : "{}",
-//  "ac") == {: "{}",
-//   })
-// }
+	testRule(t, `'a' ( 'b' v:$True )? 'c'`, map[string]string{
+		"abc": `{"v":true}`,
+		"ac":  `{}`,
+	})
+}
 
 // func TestErrorFunction(t *testing.T) {
 //  testRule(t, `'a' $error['test'] 'bc'`, map[string]string {

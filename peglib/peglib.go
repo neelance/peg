@@ -105,42 +105,49 @@ func popOutput() interface{} {
 
 func PushEmpty() {
 	if Debug {
-		fmt.Printf("pushEmpty()\n")
+		fmt.Printf("PushEmpty()\n")
 	}
 	pushOutput(make(map[string]interface{}))
 }
 
 func PushInputRange(startInput, endInput []byte) {
 	if Debug {
-		fmt.Printf("pushInputRange(...)\n")
+		fmt.Printf("PushInputRange(...)\n")
 	}
 	pushOutput(InputRange(startInput[:len(startInput)-len(endInput)]))
 }
 
-func PushBoolean(value bool) {
+func PushTrue() {
 	if Debug {
-		fmt.Printf("pushBoolean(%t)\n", value)
+		fmt.Printf("PushTrue()\n")
 	}
-	pushOutput(value)
+	pushOutput(true)
+}
+
+func PushFalse() {
+	if Debug {
+		fmt.Printf("PushFalse()\n")
+	}
+	pushOutput(false)
 }
 
 func PushString(value string) {
 	if Debug {
-		fmt.Printf("pushString(%q)\n", value)
+		fmt.Printf("PushString(%q)\n", value)
 	}
 	pushOutput(StringData(value))
 }
 
 func PushArray() {
 	if Debug {
-		fmt.Printf("pushArray()\n")
+		fmt.Printf("PushArray()\n")
 	}
 	pushOutput([]interface{}{})
 }
 
 func AppendToArray() {
 	if Debug {
-		fmt.Printf("appendToArray()\n")
+		fmt.Printf("AppendToArray()\n")
 	}
 	v := popOutput()
 	pushOutput(append(popOutput().([]interface{}), v))
@@ -148,14 +155,14 @@ func AppendToArray() {
 
 func MakeLabel(name string) {
 	if Debug {
-		fmt.Printf("makeLabel(%q)\n", name)
+		fmt.Printf("MakeLabel(%q)\n", name)
 	}
 	pushOutput(map[string]interface{}{name: popOutput()})
 }
 
 func MergeLabels(count int) {
 	if Debug {
-		fmt.Printf("mergeLabels(%d)\n", count)
+		fmt.Printf("MergeLabels(%d)\n", count)
 	}
 	merged := make(map[string]interface{})
 	for i := 0; i < count; i++ {
@@ -170,21 +177,21 @@ func MergeLabels(count int) {
 
 func MakeValue(code string, filename string, line int) {
 	if Debug {
-		fmt.Printf("makeValue(%q, %q, %d)\n", code, filename, line)
+		fmt.Printf("MakeValue(%q, %q, %d)\n", code, filename, line)
 	}
 	panic("makeValue not supported")
 }
 
 func MakeObject(class string) {
 	if Debug {
-		fmt.Printf("makeObject(%q)\n", class)
+		fmt.Printf("MakeObject(%q)\n", class)
 	}
 	pushOutput(Factory(class, popOutput()))
 }
 
 func Pop(count int) {
 	if Debug {
-		fmt.Printf("pop(%d)\n", count)
+		fmt.Printf("Pop(%d)\n", count)
 	}
 	for i := 0; i < count; i++ {
 		popOutput()
@@ -193,7 +200,7 @@ func Pop(count int) {
 
 func LocalsPush(count int) {
 	if Debug {
-		fmt.Printf("localsPush(%d)\n", count)
+		fmt.Printf("LocalsPush(%d)\n", count)
 	}
 	for i := 0; i < count; i++ {
 		localsStack = append(localsStack, popOutput())
@@ -202,14 +209,14 @@ func LocalsPush(count int) {
 
 func LocalsLoad(index int) {
 	if Debug {
-		fmt.Printf("localsLoad(%d)\n", index)
+		fmt.Printf("LocalsLoad(%d)\n", index)
 	}
 	pushOutput(localsStack[len(localsStack)-1-int(index)])
 }
 
 func LocalsPop(count int) {
 	if Debug {
-		fmt.Printf("localsPop(%d)\n", count)
+		fmt.Printf("LocalsPop(%d)\n", count)
 	}
 	localsStack = localsStack[:len(localsStack)-count]
 }
@@ -217,7 +224,7 @@ func LocalsPop(count int) {
 // func Match(absPos uintptr) uintptr {
 // 	pos := absPos - inputOffset
 // 	if Debug {
-// 		fmt.Printf("match(%d)\n", pos)
+// 		fmt.Printf("Match(%d)\n", pos)
 // 	}
 // 	var expected []byte
 // 	switch e := popOutput().(type) {
@@ -236,34 +243,34 @@ func LocalsPop(count int) {
 
 func SetAsSource() {
 	if Debug {
-		fmt.Printf("setAsSource()\n")
+		fmt.Printf("SetAsSource()\n")
 	}
 	tempSource, _ = popOutput().(map[string]interface{})
 }
 
 func ReadFromSource(name string) {
 	if Debug {
-		fmt.Printf("readFromSource(%q)\n", name)
+		fmt.Printf("ReadFromSource(%q)\n", name)
 	}
 	pushOutput(tempSource[name])
 }
 
 func TraceEnter(name string) {
 	if Debug {
-		fmt.Printf("traceEnter(%q)\n", name)
+		fmt.Printf("TraceEnter(%q)\n", name)
 	}
 }
 
 func TraceLeave(name string, successful bool) {
 	if Debug {
-		fmt.Printf("traceLeave(%q, %t)\n", name, successful)
+		fmt.Printf("TraceLeave(%q, %t)\n", name, successful)
 	}
 }
 
 func TraceFailure(absPos uintptr, reason string, isExpectation bool) {
 	pos := int(absPos - inputOffset)
 	if Debug {
-		fmt.Printf("traceFailure(%d, %q, %t  )\n", pos, reason, isExpectation)
+		fmt.Printf("TraceFailure(%d, %q, %t  )\n", pos, reason, isExpectation)
 	}
 	if pos > failurePosition {
 		failurePosition = pos

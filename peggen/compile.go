@@ -266,6 +266,12 @@ func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stm
 
 		return stmts
 
+	case *TrueFunction:
+		return []ast.Stmt{exprStmt(peglibCall("PushTrue"))}
+
+	case *FalseFunction:
+		return []ast.Stmt{exprStmt(peglibCall("PushFalse"))}
+
 	default:
 		panic("c.compileExpr not implemented for given type")
 	}
@@ -311,6 +317,9 @@ func (c *Context) hasOutput(expr ParsingExpression) bool {
 
 	case *Label:
 		return !e.IsLocal
+
+	case *TrueFunction, *FalseFunction:
+		return true
 
 	default:
 		return false
