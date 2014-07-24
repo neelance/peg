@@ -131,13 +131,9 @@ func PushString(value string) {
 	pushOutput(StringData(value))
 }
 
-func PushArray(appendCurrent bool) {
+func PushArray() {
 	if Debug {
-		fmt.Printf("pushArray(%t)\n", appendCurrent)
-	}
-	if appendCurrent {
-		pushOutput([]interface{}{popOutput()})
-		return
+		fmt.Printf("pushArray()\n")
 	}
 	pushOutput([]interface{}{})
 }

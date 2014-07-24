@@ -296,153 +296,154 @@ func TestRecursiveRuleWithLabel(t *testing.T) {
 	})
 
 	testGrammar(t, `
-		 rule Test
-			 '(' Test ')' / char:'a'
-		 end
+		rule Test
+			'(' Test ')' / char:'a'
+		end
 	`, "Test", map[string]string{
 		"((a))": `{"char":"a"}`,
 	})
 
 	testGrammar(t, `
-		 rule Test
-			 '(' test2 ')' / char:'a'
-		 end
-		 rule test2
-			 a:Test b:Test
-		 end
+		rule Test
+			'(' test2 ')' / char:'a'
+		end
+		rule test2
+			a:Test b:Test
+		end
 	`, "Test", map[string]string{
 		"((aa)(aa))": `{"a":{"a":{"char":"a"},"b":{"char":"a"}},"b":{"a":{"char":"a"},"b":{"char":"a"}}}`,
 	})
 }
 
-// func TestRepetitionWithLabel(t *testing.T) {
-// 	testRule(t, `list:( char:( 'a' / 'b' / 'c' ) )*`, map[string]string {
-// 	"abc") == { list: [{ char: "a" }, { char: "b" }, { char: "c" }] : "{}",
+func TestRepetitionWithLabel(t *testing.T) {
+	testRule(t, `list:( char:( 'a' / 'b' / 'c' ) )*`, map[string]string{
+		"abc": `{"list":[{"char":"a"},{"char":"b"},{"char":"c"}]}`,
+	})
 
-// 	testRule(t, `list:( char:'a' / char:'b' / 'c' )+`, map[string]string {
-// 	"abc") == { list: [{ char: "a" }, { char: "b" }, {}] : "{}",
+	testRule(t, `list:( char:'a' / char:'b' / 'c' )+`, map[string]string{
+		"abc": `{"list":[{"char":"a"},{"char":"b"},{}]}`,
+	})
 
-// 	testRule(t, `( 'a' / 'b' / 'c' )+`, map[string]string {
-// 	"abc") == {: "{}",
+	testRule(t, `list:( 'a' char:. )*->( 'ada' final:. )`, map[string]string{
+		"abacadae": `{"list":[{"char":"b"},{"char":"c"},{"final":"e"}]}`,
+	})
 
-// 	testRule(t, `list:( 'a' char:. )*->( 'ada' final:. )`, map[string]string {
-// 	"abacadae") == { list: [{ char: "b" }, { char: "c" }, { final: "e" }] : "{}",
-
-// 	testGrammar(t, `
-// 	//       rule test
-// 	//         ( char1:'a' inner:test / 'b' )*
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "ab")
-// }
+	testGrammar(t, `
+		rule Test
+			( char:'a' inner:Test / 'b' )*
+		end
+	`, "Test", map[string]string{
+		"ab": `[{"char":"a","inner":[{}]}]`,
+	})
+}
 
 // func TestObjectCreator(t *testing.T) {
-// 	testRule(t, `'a' char:. 'c' <TestClassA> / 'd' char:. 'f' <TestClassB>", class_scope: self.clas`, map[string]string {
-// 	"abc") == TestClassA.new({ char: "b" }: "{}",
-// 	"def") == TestClassB.new({ char: "e" }: "{}",
+//  testRule(t, `'a' char:. 'c' <TestClassA> / 'd' char:. 'f' <TestClassB>", class_scope: self.clas`, map[string]string {
+//  "abc") == TestClassA.new({ char: "b" }: "{}",
+//  "def") == TestClassB.new({ char: "e" }: "{}",
 
-// 	testRule(t, `'a' char:. 'c' <TestClassA { a: 'test1', b: [ <TestClassB "{}">, <TestClassB { r: @char }> ] }>", class_scope: self.clas`, map[string]string {
-// 	"abc") == TestClassA.new({ a: "test1", b: [ TestClassB.new("{}"), TestClassB.new({ r: "b" }) ] }: "{}",
+//  testRule(t, `'a' char:. 'c' <TestClassA { a: 'test1', b: [ <TestClassB "{}">, <TestClassB { r: @char }> ] }>", class_scope: self.clas`, map[string]string {
+//  "abc") == TestClassA.new({ a: "test1", b: [ TestClassB.new("{}"), TestClassB.new({ r: "b" }) ] }: "{}",
 // }
 
 // func TestValueCreator(t *testing.T) {
-// 	testRule(t, `, map[string]string {
-// 	//       'a' char:. 'c' { @char.upcase } /
-// 	//       word:'def' { @word.chars.map { |c| c.ord } } /
-// 	//       'ghi' { [__FILE__, __LINE__] }
-// 	//     ", filename: "test.jetpeg"
-// 	"abc") == "B: "{}",
-// 	"def") == ["d".ord, "e".ord, "f".ord: "{}",
-// 	"ghi") == ["test.jetpeg", 4: "{}",
+//  testRule(t, `, map[string]string {
+//  //       'a' char:. 'c' { @char.upcase } /
+//  //       word:'def' { @word.chars.map { |c| c.ord } } /
+//  //       'ghi' { [__FILE__, __LINE__] }
+//  //     ", filename: "test.jetpeg"
+//  "abc") == "B: "{}",
+//  "def") == ["d".ord, "e".ord, "f".ord: "{}",
+//  "ghi") == ["test.jetpeg", 4: "{}",
 // }
 
 // func TestLocalLabel(t *testing.T) {
-// 	testRule(t, `'a' %temp:( char:'b' )* 'c' ( result:%temp )`, map[string]string {
-// 	"abc") == { result: [{ char: "b" }] : "{}",
-// 	"abX") == ni: "{}",
+//  testRule(t, `'a' %temp:( char:'b' )* 'c' ( result:%temp )`, map[string]string {
+//  "abc") == { result: [{ char: "b" }] : "{}",
+//  "abX") == ni: "{}",
 
-// 	testRule(t, `'a' %temp:( char:'b' )* 'c' result1:%temp result2:%temp`, map[string]string {
-// 	"abc") == { result1: [{ char: "b" }], result2: [{ char: "b" }] : "{}",
+//  testRule(t, `'a' %temp:( char:'b' )* 'c' result1:%temp result2:%temp`, map[string]string {
+//  "abc") == { result1: [{ char: "b" }], result2: [{ char: "b" }] : "{}",
 // }
 
 // func TestParameters(t *testing.T) {
-// 	testGrammar(t, `
-// 	//       rule test
-// 	//         %a:. %b:. test2[%a, %b, $"{}"]
-// 	//       end
-// 	//       rule test2[%v, %w, %x]
-// 	//         result1:%v result2:%w result3:%x
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "ab") == { result1: "a", result2: "b", result3: "{}" }
+//  testGrammar(t, `
+//  //       rule test
+//  //         %a:. %b:. test2[%a, %b, $"{}"]
+//  //       end
+//  //       rule test2[%v, %w, %x]
+//  //         result1:%v result2:%w result3:%x
+//  //       end
+//  //     "
+//  //     assert grammar.parse_rule(:test, "ab") == { result1: "a", result2: "b", result3: "{}" }
 // }
 
 // func TestUndefinedLocalLabelError(t *testing.T) {
-// 	//     assert_raise JetPEG::CompilationError do
-// 	testRule(t, `char:%missing`, map[string]string {
-// 	//       rule.parse "abc"
-// 	//     end
+//  //     assert_raise JetPEG::CompilationError do
+//  testRule(t, `char:%missing`, map[string]string {
+//  //       rule.parse "abc"
+//  //     end
 // }
 
 // func TestLeftRecursionHandling(t *testing.T) {
-// 	testGrammar(t, `
-// 	//       rule expr
-// 	//         add:( l:expr '+' r:num ) /
-// 	//         sub:( l:expr '-' r:num ) /
-// 	//         expr /
-// 	//         @:num
-// 	//       end
+//  testGrammar(t, `
+//  //       rule expr
+//  //         add:( l:expr '+' r:num ) /
+//  //         sub:( l:expr '-' r:num ) /
+//  //         expr /
+//  //         @:num
+//  //       end
 
-// 	//       rule num
-// 	//         [0-9]+
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:expr, "1-2-3") == { sub: { l: { sub: { l: "1", r: "2" } }, r: "3" } }
+//  //       rule num
+//  //         [0-9]+
+//  //       end
+//  //     "
+//  //     assert grammar.parse_rule(:expr, "1-2-3") == { sub: { l: { sub: { l: "1", r: "2" } }, r: "3" } }
 // }
 
 // func TestBooleanFunctions(t *testing.T) {
-// 	testRule(t, `'a' v:$"{}" 'bc' / 'd' v:$"false 'ef'`, map[string]string "{
-// 	"abc") == { v: "{}" : "{}",
-// 	"def") == { v: "false : "{}"",
+//  testRule(t, `'a' v:$"{}" 'bc' / 'd' v:$"false 'ef'`, map[string]string "{
+//  "abc") == { v: "{}" : "{}",
+//  "def") == { v: "false : "{}"",
 //   })
 
-// 	testRule(t, `'a' ( 'b' v:$"{}" )? 'c'`, map[string]string {
-// 	"abc") == { v: "{}" : "{}",
-// 	"ac") == {: "{}",
+//  testRule(t, `'a' ( 'b' v:$"{}" )? 'c'`, map[string]string {
+//  "abc") == { v: "{}" : "{}",
+//  "ac") == {: "{}",
 //   })
 // }
 
 // func TestErrorFunction(t *testing.T) {
-// 	testRule(t, `'a' $error['test'] 'bc'`, map[string]string {
-// 	"abc": "null",
-// 	//     assert rule.parser.failure_reason.is_a? JetPEG::ParsingError
-// 	//     assert rule.parser.failure_reason.position == 1
-// 	//     assert rule.parser.failure_reason.other_reasons == ["test"]
+//  testRule(t, `'a' $error['test'] 'bc'`, map[string]string {
+//  "abc": "null",
+//  //     assert rule.parser.failure_reason.is_a? JetPEG::ParsingError
+//  //     assert rule.parser.failure_reason.position == 1
+//  //     assert rule.parser.failure_reason.other_reasons == ["test"]
 // }
 
 // func TestMatchFunction(t *testing.T) {
-// 	testRule(t, `%a:( . . ) $match[%a]`, map[string]string {
-// 	"abab": "{}",
-// 	"cdcd": "{}",
-// 	"a": "null",
-// 	"ab": "null",
-// 	"aba": "null",
-// 	"abaX": "null",
+//  testRule(t, `%a:( . . ) $match[%a]`, map[string]string {
+//  "abab": "{}",
+//  "cdcd": "{}",
+//  "a": "null",
+//  "ab": "null",
+//  "aba": "null",
+//  "abaX": "null",
 // }
 
 // func TestModes(t *testing.T) {
-// 	testGrammar(t, `
-// 	//       rule test
-// 	//         test2 $enter_mode['somemode', test2 $enter_mode['othermode', $leave_mode['somemode', test2]]]
-// 	//       end
-// 	//       rule test2
-// 	//         !$in_mode['somemode'] 'a' / $in_mode['somemode'] 'b'
-// 	//       end
-// 	//     "
-// 	//     assert grammar.parse_rule(:test, "aba")
-// 	//     assert !grammar.parse_rule(:test, "aaa")
-// 	//     assert !grammar.parse_rule(:test, "bba")
-// 	//     assert !grammar.parse_rule(:test, "abb")
+//  testGrammar(t, `
+//  //       rule test
+//  //         test2 $enter_mode['somemode', test2 $enter_mode['othermode', $leave_mode['somemode', test2]]]
+//  //       end
+//  //       rule test2
+//  //         !$in_mode['somemode'] 'a' / $in_mode['somemode'] 'b'
+//  //       end
+//  //     "
+//  //     assert grammar.parse_rule(:test, "aba")
+//  //     assert !grammar.parse_rule(:test, "aaa")
+//  //     assert !grammar.parse_rule(:test, "bba")
+//  //     assert !grammar.parse_rule(:test, "abb")
 // }
 
 func testRule(t *testing.T, rule string, inputs map[string]string) {

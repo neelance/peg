@@ -150,38 +150,59 @@ func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stm
 				repetitionLabel.Break(),
 			}
 		}
+
 		var body []ast.Stmt
 		if e.GlueExpression != nil {
+			glueBody := c.compileExpr(e.GlueExpression, breakLoop)
+			if c.hasOutput(e.GlueExpression) {
+				glueBody = append(glueBody, exprStmt(peglibCall("Pop")))
+			}
 			body = append(body, &ast.IfStmt{
 				Cond: not(first),
-				Body: &ast.BlockStmt{List: c.compileExpr(e.GlueExpression, breakLoop)},
+				Body: &ast.BlockStmt{List: glueBody},
 			})
 		}
 		body = append(body, c.compileExpr(e.Child, breakLoop)...)
+		if c.hasOutput(e.Child) {
+			body = append(body, exprStmt(peglibCall("AppendToArray")))
+		}
 		if repetitionLabel.Used {
 			body = append([]ast.Stmt{simpleDefine(beforeRepetition, input)}, body...)
 		}
-		return []ast.Stmt{
-			repetitionLabel.WithLabel(&ast.ForStmt{
-				Init: forInit,
-				Post: forPost,
-				Body: &ast.BlockStmt{List: body},
-			}),
+
+		var stmts []ast.Stmt
+		if c.hasOutput(e) {
+			stmts = append(stmts, exprStmt(peglibCall("PushArray")))
 		}
+		stmts = append(stmts, repetitionLabel.WithLabel(&ast.ForStmt{
+			Init: forInit,
+			Post: forPost,
+			Body: &ast.BlockStmt{List: body},
+		}))
+		return stmts
 
 	case *Until:
 		untilLabel := newDynamicLabel("until")
 		checkFailed := newDynamicLabel("checkFailed")
 		beforeCheck := newIdent("beforeCheck")
+
 		body := []ast.Stmt{simpleDefine(beforeCheck, input)}
-		body = append(body, c.compileExpr(e.UntilExpression, checkFailed.GotoSlice)...)
+		body = append(body, &ast.BlockStmt{List: c.compileExpr(e.UntilExpression, checkFailed.GotoSlice)})
+		if c.hasOutput(e.UntilExpression) {
+			body = append(body, exprStmt(peglibCall("AppendToArray")))
+		}
 		body = append(body, untilLabel.Break(), checkFailed.WithLabel(simpleAssign(input, beforeCheck)))
 		body = append(body, c.compileExpr(e.Child, onFailure)...)
-		return []ast.Stmt{
-			untilLabel.WithLabel(&ast.ForStmt{
-				Body: &ast.BlockStmt{List: body},
-			}),
+		if c.hasOutput(e.Child) {
+			body = append(body, exprStmt(peglibCall("AppendToArray")))
 		}
+
+		var stmts []ast.Stmt
+		if c.hasOutput(e) {
+			stmts = append(stmts, exprStmt(peglibCall("PushArray")))
+		}
+		stmts = append(stmts, untilLabel.WithLabel(&ast.ForStmt{Body: &ast.BlockStmt{List: body}}))
+		return stmts
 
 	case *PositiveLookahead:
 		beforeLookahead := newIdent("beforeLookahead")
@@ -278,6 +299,12 @@ func (c *Context) hasOutput(expr ParsingExpression) bool {
 			}
 		}
 		return false
+
+	case *Repetition:
+		return c.hasOutput(e.Child)
+
+	case *Until:
+		return c.hasOutput(e.Child) || c.hasOutput(e.UntilExpression)
 
 	case *ParenthesizedExpression:
 		return c.hasOutput(e.Child)
