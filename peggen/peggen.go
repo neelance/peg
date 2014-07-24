@@ -81,12 +81,23 @@ func Compile(grammar string) []ast.Decl {
 		panic(err)
 	}
 
-	var decls []ast.Decl
-	for _, rule := range g.(map[string]interface{})["Rules"].([]interface{}) {
-		r := rule.(map[string]interface{})
+	c := &Context{
+		Rules: make(map[string]*Rule),
+	}
+	var ruleNames []string
 
-		c := &Context{}
-		body := c.compileExpr(r["Child"].(*Rule).Child, func() []ast.Stmt {
+	var decls []ast.Decl
+	for _, data := range g.(map[string]interface{})["Rules"].([]interface{}) {
+		d := data.(map[string]interface{})
+		rule := d["Child"].(*Rule)
+		rule.RuleName = d["Name"].(jetpeg.Stringer)
+		// rule.Parameters = d["Parameters"].([]interface{})
+		c.Rules[rule.RuleName.String()] = rule
+		ruleNames = append(ruleNames, rule.RuleName.String())
+	}
+
+	for _, name := range ruleNames {
+		body := c.compileExpr(c.Rules[name].Child, func() []ast.Stmt {
 			return []ast.Stmt{
 				&ast.ReturnStmt{Results: []ast.Expr{ast.NewIdent("nil")}},
 			}
@@ -94,7 +105,7 @@ func Compile(grammar string) []ast.Decl {
 		body = append(body, &ast.ReturnStmt{Results: []ast.Expr{input}})
 
 		decls = append(decls, &ast.FuncDecl{
-			Name: ast.NewIdent(r["Name"].(jetpeg.Stringer).String()),
+			Name: ast.NewIdent(name),
 			Type: &ast.FuncType{
 				Params:  &ast.FieldList{List: []*ast.Field{&ast.Field{Names: []*ast.Ident{input}, Type: byteSlice}}},
 				Results: &ast.FieldList{List: []*ast.Field{&ast.Field{Type: byteSlice}}},

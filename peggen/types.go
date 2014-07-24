@@ -5,9 +5,11 @@ import (
 )
 
 type Rule struct {
-	// RuleName   jetpeg.Stringer
-	// Parameters []interface{}
-	Child ParsingExpression
+	RuleName            jetpeg.Stringer
+	Parameters          []interface{}
+	Child               ParsingExpression
+	HasOutput           bool
+	HasOutputCalculated bool
 }
 
 type ParsingExpression interface{}

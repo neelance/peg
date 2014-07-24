@@ -67,12 +67,14 @@ var failureOtherReasons []string
 func Test(rule func([]byte) []byte) {
 	inputAtEnd := rule(append([]byte(os.Args[1]), 0))
 	if len(inputAtEnd) != 1 || inputAtEnd[0] != 0 {
-		fmt.Println("false")
+		fmt.Println("null")
 		return
 	}
 	if len(outputStack) == 0 {
-		fmt.Println("true")
-		return
+		PushEmpty()
+	}
+	if len(outputStack) != 1 {
+		panic("len(outputStack) != 1")
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(outputStack[0]); err != nil {
 		panic(err)
@@ -160,7 +162,7 @@ func MergeLabels(count int) {
 		fmt.Printf("mergeLabels(%d)\n", count)
 	}
 	merged := make(map[string]interface{})
-	for i := 0; i < int(count); i++ {
+	for i := 0; i < count; i++ {
 		if m, ok := popOutput().(map[string]interface{}); ok {
 			for k, v := range m {
 				merged[k] = v
@@ -184,18 +186,20 @@ func MakeObject(class string) {
 	pushOutput(Factory(class, popOutput()))
 }
 
-func Pop() {
+func Pop(count int) {
 	if Debug {
-		fmt.Printf("pop()\n")
+		fmt.Printf("pop(%d)\n", count)
 	}
-	popOutput()
+	for i := 0; i < count; i++ {
+		popOutput()
+	}
 }
 
 func LocalsPush(count int) {
 	if Debug {
 		fmt.Printf("localsPush(%d)\n", count)
 	}
-	for i := 0; i < int(count); i++ {
+	for i := 0; i < count; i++ {
 		localsStack = append(localsStack, popOutput())
 	}
 }
@@ -211,7 +215,7 @@ func LocalsPop(count int) {
 	if Debug {
 		fmt.Printf("localsPop(%d)\n", count)
 	}
-	localsStack = localsStack[:len(localsStack)-int(count)]
+	localsStack = localsStack[:len(localsStack)-count]
 }
 
 // func Match(absPos uintptr) uintptr {

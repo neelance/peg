@@ -8,6 +8,7 @@ import (
 )
 
 type Context struct {
+	Rules map[string]*Rule
 }
 
 func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stmt) []ast.Stmt {
@@ -76,8 +77,19 @@ func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stm
 
 	case *Sequence:
 		var stmts []ast.Stmt
+		outputCount := 0
 		for _, child := range e.Children {
-			stmts = append(stmts, c.compileExpr(child.(ParsingExpression), onFailure)...)
+			stmts = append(stmts, c.compileExpr(child.(ParsingExpression), func() []ast.Stmt {
+				return append([]ast.Stmt{
+					exprStmt(peglibCall("Pop", intConst(outputCount))),
+				}, onFailure()...)
+			})...)
+			if c.hasOutput(child.(ParsingExpression)) {
+				outputCount++
+			}
+		}
+		if outputCount >= 2 {
+			stmts = append(stmts, exprStmt(peglibCall("MergeLabels", intConst(outputCount))))
 		}
 		return stmts
 
@@ -89,14 +101,21 @@ func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stm
 		choiceSuccessful := newDynamicLabel("choiceSuccessful")
 		beforeChoice := newIdent("beforeChoice")
 		stmts := []ast.Stmt{simpleDefine(beforeChoice, input)}
-		for i, child := range e.Children {
+		for i, theChild := range e.Children {
+			child := theChild.(ParsingExpression)
 			if i == len(e.Children)-1 {
-				stmts = append(stmts, c.compileExpr(child.(ParsingExpression), onFailure)...)
+				stmts = append(stmts, &ast.BlockStmt{List: c.compileExpr(child, onFailure)})
+				if c.hasOutput(e) && !c.hasOutput(child) {
+					stmts = append(stmts, exprStmt(peglibCall("PushEmpty")))
+				}
 				break
 			}
 			nextChoice := newDynamicLabel("nextChoice")
+			stmts = append(stmts, &ast.BlockStmt{List: c.compileExpr(child, nextChoice.GotoSlice)})
+			if c.hasOutput(e) && !c.hasOutput(child) {
+				stmts = append(stmts, exprStmt(peglibCall("PushEmpty")))
+			}
 			stmts = append(stmts,
-				&ast.BlockStmt{List: c.compileExpr(child.(ParsingExpression), nextChoice.GotoSlice)},
 				choiceSuccessful.Goto(),
 				nextChoice.WithLabel(nil),
 				simpleAssign(input, beforeChoice),
@@ -203,13 +222,13 @@ func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stm
 	case *Label:
 		stmts := c.compileExpr(e.Child, onFailure)
 		nameIsAt := e.Name.String() == "@"
-		childHasReturnValue := hasReturnValue(e.Child)
+		childHasOutput := c.hasOutput(e.Child)
 
-		if childHasReturnValue && nameIsAt {
-			stmts = append(stmts, exprStmt(peglibCall("Pop")))
-			childHasReturnValue = false
+		if childHasOutput && nameIsAt {
+			stmts = append(stmts, exprStmt(peglibCall("Pop", intConst(1))))
+			childHasOutput = false
 		}
-		if !childHasReturnValue {
+		if !childHasOutput {
 			labelStart := newIdent("labelStart")
 			stmts = append([]ast.Stmt{simpleDefine(labelStart, input)}, stmts...)
 			stmts = append(stmts, exprStmt(peglibCall("PushInputRange", labelStart, input)))
@@ -231,11 +250,22 @@ func (c *Context) compileExpr(expr ParsingExpression, onFailure func() []ast.Stm
 	}
 }
 
-func hasReturnValue(expr ParsingExpression) bool {
+func (c *Context) hasOutput(expr ParsingExpression) bool {
 	switch e := expr.(type) {
+	case *Rule:
+		if !e.HasOutputCalculated {
+			e.HasOutput = true // for recursion
+			e.HasOutputCalculated = true
+			e.HasOutput = c.hasOutput(e.Child)
+		}
+		return e.HasOutput
+
+	case *RuleCall:
+		return c.hasOutput(c.Rules[e.Name.String()])
+
 	case *Sequence:
 		for _, child := range e.Children {
-			if hasReturnValue(child.(ParsingExpression)) {
+			if c.hasOutput(child.(ParsingExpression)) {
 				return true
 			}
 		}
@@ -243,14 +273,14 @@ func hasReturnValue(expr ParsingExpression) bool {
 
 	case *Choice:
 		for _, child := range e.Children {
-			if hasReturnValue(child.(ParsingExpression)) {
+			if c.hasOutput(child.(ParsingExpression)) {
 				return true
 			}
 		}
 		return false
 
 	case *ParenthesizedExpression:
-		return hasReturnValue(e.Child)
+		return c.hasOutput(e.Child)
 
 	case *Label:
 		return !e.IsLocal
