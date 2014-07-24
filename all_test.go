@@ -1,7 +1,8 @@
-package peggen
+package main
 
 import (
 	"encoding/json"
+	"github.com/neelance/peg/peggen"
 	"go/ast"
 	"go/printer"
 	"go/token"
@@ -441,11 +442,14 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 					Name: ast.NewIdent("main"),
 					Type: &ast.FuncType{},
 					Body: &ast.BlockStmt{
-						List: []ast.Stmt{&ast.ExprStmt{X: peglibCall("Test", ast.NewIdent(mainRule))}},
+						List: []ast.Stmt{&ast.ExprStmt{X: &ast.CallExpr{
+							Fun:  &ast.SelectorExpr{X: ast.NewIdent("peglib"), Sel: ast.NewIdent("Test")},
+							Args: []ast.Expr{ast.NewIdent(mainRule)},
+						}}},
 					},
 				},
 			},
-			Compile(grammar)...,
+			peggen.Compile(grammar)...,
 		),
 	}
 
@@ -479,6 +483,6 @@ func testGrammar(t *testing.T, grammar, mainRule string, inputs map[string]strin
 
 	if !t.Failed() {
 		os.Remove(testfile.Name())
-		os.Remove("tmt")
+		os.Remove("tmp")
 	}
 }
