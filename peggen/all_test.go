@@ -346,17 +346,6 @@ func TestRepetitionWithLabel(t *testing.T) {
 //  "abc") == TestClassA.new({ a: "test1", b: [ TestClassB.new("{}"), TestClassB.new({ r: "b" }) ] }: "{}",
 // }
 
-// func TestValueCreator(t *testing.T) {
-//  testRule(t, `, map[string]string {
-//  //       'a' char:. 'c' { @char.upcase } /
-//  //       word:'def' { @word.chars.map { |c| c.ord } } /
-//  //       'ghi' { [__FILE__, __LINE__] }
-//  //     ", filename: "test.jetpeg"
-//  "abc") == "B: "{}",
-//  "def") == ["d".ord, "e".ord, "f".ord: "{}",
-//  "ghi") == ["test.jetpeg", 4: "{}",
-// }
-
 // func TestLocalLabel(t *testing.T) {
 //  testRule(t, `'a' %temp:( char:'b' )* 'c' ( result:%temp )`, map[string]string {
 //  "abc") == { result: [{ char: "b" }] : "{}",
@@ -429,21 +418,6 @@ func TestRepetitionWithLabel(t *testing.T) {
 //  "ab": "null",
 //  "aba": "null",
 //  "abaX": "null",
-// }
-
-// func TestModes(t *testing.T) {
-//  testGrammar(t, `
-//  //       rule test
-//  //         test2 $enter_mode['somemode', test2 $enter_mode['othermode', $leave_mode['somemode', test2]]]
-//  //       end
-//  //       rule test2
-//  //         !$in_mode['somemode'] 'a' / $in_mode['somemode'] 'b'
-//  //       end
-//  //     "
-//  //     assert grammar.parse_rule(:test, "aba")
-//  //     assert !grammar.parse_rule(:test, "aaa")
-//  //     assert !grammar.parse_rule(:test, "bba")
-//  //     assert !grammar.parse_rule(:test, "abb")
 // }
 
 func testRule(t *testing.T, rule string, inputs map[string]string) {

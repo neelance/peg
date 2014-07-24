@@ -18,7 +18,6 @@ end
 
 rule creator
   / Child:sequence '<' ClassName:alphanumericChar+ ( ws :data )? '>' ws <ObjectCreator>
-  / Child:sequence '{' :code '}' ws <ValueCreator>
   / sequence
 end
 
@@ -108,9 +107,6 @@ rule function
   / '$False' <FalseFunction>
   / '$Match' '[' Value:localValue ']' <MatchFunction>
   / '$Error' '[' Msg:string ']' <ErrorFunction>
-  / '$EnterMode' '[' Name:string ',' ws Child:expression ']' <EnterModeFunction>
-  / '$LeaveMode' '[' Name:string ',' ws Child:expression ']' <LeaveModeFunction>
-  / '$InMode' '[' Name:string ']' <InModeFunction>
 end
 
 rule localValue

@@ -87,11 +87,6 @@ type ObjectCreator struct {
 	Data      interface{}
 }
 
-type ValueCreator struct {
-	Child ParsingExpression
-	Code  jetpeg.Stringer
-}
-
 type TrueFunction struct {
 }
 
@@ -104,20 +99,6 @@ type MatchFunction struct {
 
 type ErrorFunction struct {
 	Msg jetpeg.Stringer
-}
-
-type EnterModeFunction struct {
-	Name  jetpeg.Stringer
-	Child ParsingExpression
-}
-
-type LeaveModeFunction struct {
-	Name  jetpeg.Stringer
-	Child ParsingExpression
-}
-
-type InModeFunction struct {
-	Name jetpeg.Stringer
 }
 
 type StringValue struct {
